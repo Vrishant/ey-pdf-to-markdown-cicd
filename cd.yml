@@ -1,0 +1,69 @@
+# Location: .github/workflows/cd.yml
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_to_production:
+        description: "Deploy to production after staging succeeds"
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/pdf2md
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute tag
+        id: meta
+        run: echo "tag=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  deploy-staging:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy to staging
+        run: |
+          echo "Deploying ${{ needs.build-and-push.outputs.image_tag }} to staging"
+          # e.g. kubectl set image deployment/pdf2md pdf2md=$REGISTRY/$IMAGE_NAME:$TAG -n staging
+
+  deploy-production:
+    needs: [build-and-push, deploy-staging]
+    if: github.event.inputs.deploy_to_production == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - name: Deploy to production
+        run: |
+          echo "Deploying ${{ needs.build-and-push.outputs.image_tag }} to production"
+          # e.g. kubectl set image deployment/pdf2md pdf2md=$REGISTRY/$IMAGE_NAME:$TAG -n production
