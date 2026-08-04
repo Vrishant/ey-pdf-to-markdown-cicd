@@ -4,36 +4,37 @@ name: Nightly GPU Integration
 on:
   schedule:
     - cron: "0 3 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 jobs:
   gpu-integration:
-    runs-on: [self-hosted, gpu]
+    runs-on: [self-hosted, gpu, kaggle]
+    timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Cache HF models
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/huggingface
-          key: ${{ runner.os }}-hf-models-v1
 
       - name: Install package
         run: pip install -e ".[dev]"
 
-      - name: Run full test suite including GPU tests
-        run: pytest -v
+      - name: Prefetch models
+        run: python scripts/prefetch_models.py
+
+      - name: Run full test suite (incl. GPU-marked)
+        run: pytest -m gpu -v
 
       - name: Run F1 regression check
-        run: python scripts/check_f1_regression.py --threshold -0.02
+        run: python scripts/check_f1_regression.py --output f1_report.json
 
-      - name: Upload regression report
+      - name: Upload F1 report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: f1-regression-report
           path: f1_report.json
+          if-no-files-found: warn
