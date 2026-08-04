@@ -1,7 +1,7 @@
 # src/pdf2md/config.py
+import os
 from dataclasses import dataclass, field
 from typing import Optional
-import os
 
 
 @dataclass

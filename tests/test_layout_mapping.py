@@ -1,5 +1,5 @@
-from pdf2md.layout import DOCSTRUCTBENCH_CLASS_MAP, NoiseFilter, merge_neighboring_boxes
 from pdf2md.config import PipelineConfig
+from pdf2md.layout import DOCSTRUCTBENCH_CLASS_MAP, NoiseFilter, merge_neighboring_boxes
 
 
 def test_table_caption_is_not_table():

@@ -3,8 +3,8 @@ from typing import List
 
 import torch
 from PIL import Image
-from transformers import AutoProcessor, BitsAndBytesConfig, Qwen2VLForConditionalGeneration
 from qwen_vl_utils import process_vision_info
+from transformers import AutoProcessor, BitsAndBytesConfig, Qwen2VLForConditionalGeneration
 
 from ..config import PipelineConfig
 from ..ingestion import PDFIngestor
@@ -56,7 +56,8 @@ class TableParser:
         ]}]
         text_prompt = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         image_inputs, _ = process_vision_info(messages)
-        inputs = self.processor(text=[text_prompt], images=image_inputs, padding=True, return_tensors="pt").to(self.model.device)
+        inputs = self.processor(text=[text_prompt], images=image_inputs, padding=True, return_tensors="pt"
+        ).to(self.model.device)
         with torch.no_grad():
             generated_ids = self.model.generate(
                 **inputs, max_new_tokens=max_new_tokens,

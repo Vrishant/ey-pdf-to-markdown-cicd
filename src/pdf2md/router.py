@@ -5,7 +5,7 @@ from typing import Dict, List
 import torch
 
 from .ingestion import PDFIngestor
-from .parsers import TextHeadingParser, TableParser, GraphParser
+from .parsers import GraphParser, TableParser, TextHeadingParser
 
 logger = logging.getLogger("pdf2md")
 
