@@ -1,0 +1,43 @@
+[project]
+name = "pdf2md"
+version = "0.1.0"
+description = "Vision-language-model-driven PDF-to-Markdown extraction pipeline"
+requires-python = ">=3.10"
+dependencies = [
+    "PyMuPDF",
+    "pytesseract",
+    "transformers>=4.45",
+    "accelerate",
+    "huggingface_hub",
+    "qwen-vl-utils",
+    "ultralytics",
+    "doclayout-yolo",
+    "bitsandbytes>=0.46.1",
+    "Pillow",
+    "torch",
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-mock", "ruff", "black"]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+markers = [
+    "gpu: tests that require a GPU and real model weights (skipped in fast CI)",
+]
+
+[tool.ruff]
+line-length = 120
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]

@@ -1,0 +1,5 @@
+<!-- Location: tests/fixtures/sample2_gt.xml -->
+<document>
+  <element type="heading">Second Fixture Document</element>
+  <element type="text">A second minimal fixture, kept separate so the regression check averages across two documents.</element>
+</document>

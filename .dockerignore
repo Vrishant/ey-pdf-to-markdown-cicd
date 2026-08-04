@@ -1,0 +1,11 @@
+# Location: .dockerignore
+.git
+.github
+tests
+docs
+*.ipynb
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+src/pdf2md.egg-info

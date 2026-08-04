@@ -1,0 +1,6 @@
+<!-- Location: tests/fixtures/sample1_gt.xml -->
+<document>
+  <element type="heading">Sample Report Title</element>
+  <element type="text">This is a short paragraph used as a CI fixture for the pdf2md pipeline integration test.</element>
+  <element type="text">It exists purely to give the pipeline something real to parse end-to-end.</element>
+</document>
