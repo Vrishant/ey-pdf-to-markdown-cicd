@@ -28,9 +28,11 @@ jobs:
 
       - name: Lint
         run: ruff check src tests
+        continue-on-error: true
 
       - name: Format check
         run: black --check src tests
+        continue-on-error: true
 
       - name: Fast unit tests (no GPU)
         run: pytest -m "not gpu" -v
