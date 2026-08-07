@@ -2,15 +2,15 @@ import logging
 import time
 from typing import List, Optional
 
+from .assembler import MarkdownDocumentAssembler
 from .config import PipelineConfig
 from .ingestion import PDFIngestor
 from .layout import LayoutExtractor, NoiseFilter, merge_neighboring_boxes
-from .ordering import ReadingOrderSorter, CaptionAssociator
 from .metadata import MetadataExtractor
-from .parsers import TextHeadingParser, TableParser, GraphParser
-from .router import ContentRouter
-from .assembler import MarkdownDocumentAssembler
 from .observability import PageMetricsRecorder
+from .ordering import CaptionAssociator, ReadingOrderSorter
+from .parsers import GraphParser, TableParser, TextHeadingParser
+from .router import ContentRouter
 
 logger = logging.getLogger("pdf2md")
 

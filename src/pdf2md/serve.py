@@ -2,12 +2,12 @@
 import os
 import tempfile
 
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse
 
 from .config import PipelineConfig
-from .pipeline import PDF2MarkdownPipeline
 from .observability import configure_logging, new_request_id
+from .pipeline import PDF2MarkdownPipeline
 
 configure_logging()
 app = FastAPI(title="pdf2md")

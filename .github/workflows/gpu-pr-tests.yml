@@ -11,11 +11,16 @@ jobs:
     if: github.head_ref == 'develop'
     runs-on: [self-hosted, gpu, kaggle]
     environment: gpu-tests   # requires manual approval — see setup note below
+    env:
+      PDF2MD_MODEL_DIR: /kaggle/working/models
     steps:
       - uses: actions/checkout@v4
 
       - name: Install package
         run: pip install -e ".[dev]"
+
+      - name: Prefetch models
+        run: python scripts/prefetch_models.py
 
       - name: Run full test suite (includes GPU tests)
         run: pytest -v

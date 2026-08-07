@@ -32,13 +32,14 @@ class GraphParser:
         return self._parse_response(raw)
 
     def _run_qwen(self, crop: Image.Image, prompt: str, max_new_tokens: int) -> str:
-        from qwen_vl_utils import process_vision_info
         import torch
+        from qwen_vl_utils import process_vision_info
 
         messages = [{"role": "user", "content": [{"type": "image", "image": crop}, {"type": "text", "text": prompt}]}]
         text_prompt = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         image_inputs, _ = process_vision_info(messages)
-        inputs = self.processor(text=[text_prompt], images=image_inputs, padding=True, return_tensors="pt").to(self.model.device)
+        inputs = self.processor(text=[text_prompt], images=image_inputs, padding=True, return_tensors="pt"
+        ).to(self.model.device)
         with torch.no_grad():
             generated_ids = self.model.generate(
                 **inputs, max_new_tokens=max_new_tokens,

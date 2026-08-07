@@ -2,8 +2,8 @@ import glob
 import os
 from typing import Any, Dict, List
 
-from PIL import Image
 from doclayout_yolo import YOLOv10
+from PIL import Image
 
 from .config import PipelineConfig
 
