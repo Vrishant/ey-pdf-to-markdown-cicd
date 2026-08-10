@@ -13,7 +13,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/pdf2md
 
 jobs:
   build-and-push:
@@ -25,6 +24,10 @@ jobs:
       image_tag: ${{ steps.meta.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set lowercase image name
+        id: image
+        run: echo "name=$(echo '${{ github.repository }}/pdf2md' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Log in to registry
         uses: docker/login-action@v3
@@ -43,8 +46,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:${{ steps.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
 
   deploy-staging:
     needs: build-and-push
