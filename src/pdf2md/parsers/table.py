@@ -144,7 +144,9 @@ class TableParser:
         crop = self.ingestor.render_high_res_crop(pdf_path, page_num, element["bbox"])
         crop_pixels = crop.width * crop.height
         safe_pixels = self.config.qwen_max_pixels
-        if crop_pixels <= safe_pixels:
+        bbox = element["bbox"]
+        table_height_pt = bbox[3] - bbox[1]
+        if crop_pixels <= safe_pixels or table_height_pt <= self.config.table_split_band_pt:
             max_tokens = estimate_max_tokens(crop, self.config.max_new_tokens_table)
             raw_output = self._run_qwen(crop, self.SYSTEM_PROMPT, max_tokens)
             return self._split_tables(self._strip_fences(raw_output))
@@ -172,12 +174,15 @@ class TableParser:
 
         bands = []
         top = y1
-        while top < y2:
+        while top < y2 - 1:  # 1pt tolerance to avoid float drift re-entering
             bottom = min(top + band_h, y2)
             bands.append([x1, top, x2, bottom])
             if bottom >= y2:
                 break
-            top = bottom - overlap
+            next_top = bottom - overlap
+            if next_top <= top:  # safety: overlap >= band_h would cause infinite loop
+                break
+            top = next_top
         return bands
 
     @staticmethod
