@@ -142,12 +142,13 @@ class TableParser:
 
     def parse(self, pdf_path: str, page_num: int, element: dict) -> List[str]:
         crop = self.ingestor.render_high_res_crop(pdf_path, page_num, element["bbox"])
-
-        if crop.height <= self.config.table_split_threshold_px:
+        crop_pixels = crop.width * crop.height
+        safe_pixels = self.config.qwen_max_pixels
+        if crop_pixels <= safe_pixels:
             max_tokens = estimate_max_tokens(crop, self.config.max_new_tokens_table)
             raw_output = self._run_qwen(crop, self.SYSTEM_PROMPT, max_tokens)
             return self._split_tables(self._strip_fences(raw_output))
-
+            
         return [self._parse_large_table(pdf_path, page_num, element["bbox"])]
 
     def _parse_large_table(self, pdf_path: str, page_num: int, bbox: list) -> str:
@@ -207,7 +208,12 @@ class TableParser:
         text_prompt = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         image_inputs, _ = process_vision_info(messages)
         inputs = self.processor(
-            text=[text_prompt], images=image_inputs, padding=True, return_tensors="pt"
+            text=[text_prompt],
+            images=image_inputs,
+            padding=True,
+            return_tensors="pt",
+            min_pixels=self.config.qwen_min_pixels,
+            max_pixels=self.config.qwen_max_pixels,
         ).to(self.model.device)
         with torch.no_grad():
             generated_ids = self.model.generate(

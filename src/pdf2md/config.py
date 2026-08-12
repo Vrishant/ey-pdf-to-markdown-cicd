@@ -65,7 +65,9 @@ class PipelineConfig:
     # --- Large-table splitting (OOM mitigation) ---
     # If a table crop's rendered height (at extraction_dpi) exceeds this,
     # split it into vertical bands instead of sending one giant image.
-    table_split_threshold_px: int = 1800
+    table_split_threshold_px: int = 1800        # kept for height check
+    qwen_max_pixels: int = 1_003_520            # 1344×746 — Qwen2-VL safe upper bound
+    qwen_min_pixels: int = 3_136                # 56×56 minimum
     # Height of each band, in PDF points (pre-DPI-scaling coordinate space).
     table_split_band_pt: int = 400
     # Overlap between consecutive bands, in PDF points — gives partially-cut
