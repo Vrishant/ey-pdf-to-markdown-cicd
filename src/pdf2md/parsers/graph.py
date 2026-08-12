@@ -4,6 +4,7 @@ from PIL import Image
 
 from ..config import PipelineConfig
 from ..ingestion import PDFIngestor
+from ..utils import estimate_max_tokens
 from .table import TableParser
 
 
@@ -27,19 +28,19 @@ class GraphParser:
 
     def parse(self, pdf_path: str, page_num: int, element: Dict) -> Tuple[str, str]:
         crop = self.ingestor.render_high_res_crop(pdf_path, page_num, element["bbox"])
-        max_tok = max(self.config.max_new_tokens_table, self.config.max_new_tokens_figure)
-        raw = self._run_qwen(crop, self.COMBINED_PROMPT, max_tok)
+        base_tokens = max(self.config.max_new_tokens_table, self.config.max_new_tokens_figure)
+        max_tokens = estimate_max_tokens(crop, base_tokens)
+        raw = self._run_qwen(crop, self.COMBINED_PROMPT, max_tokens)
         return self._parse_response(raw)
 
     def _run_qwen(self, crop: Image.Image, prompt: str, max_new_tokens: int) -> str:
-        import torch
         from qwen_vl_utils import process_vision_info
+        import torch
 
         messages = [{"role": "user", "content": [{"type": "image", "image": crop}, {"type": "text", "text": prompt}]}]
         text_prompt = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         image_inputs, _ = process_vision_info(messages)
-        inputs = self.processor(text=[text_prompt], images=image_inputs, padding=True, return_tensors="pt"
-        ).to(self.model.device)
+        inputs = self.processor(text=[text_prompt], images=image_inputs, padding=True, return_tensors="pt").to(self.model.device)
         with torch.no_grad():
             generated_ids = self.model.generate(
                 **inputs, max_new_tokens=max_new_tokens,
@@ -55,3 +56,4 @@ class GraphParser:
         rest = lines[1].strip() if len(lines) > 1 else ""
         kind = "data" if "DATA" in first else "decorative"
         return kind, (rest if rest else raw)
+        

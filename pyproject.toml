@@ -23,6 +23,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest", "pytest-mock", "ruff", "black"]
 
+[project.scripts]
+pdf2md = "pdf2md.cli:main"
+
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"

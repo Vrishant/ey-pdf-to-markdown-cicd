@@ -3,11 +3,12 @@ from typing import List
 
 import torch
 from PIL import Image
-from qwen_vl_utils import process_vision_info
 from transformers import AutoProcessor, BitsAndBytesConfig, Qwen2VLForConditionalGeneration
+from qwen_vl_utils import process_vision_info
 
 from ..config import PipelineConfig
 from ..ingestion import PDFIngestor
+from ..utils import estimate_max_tokens
 
 
 def build_quant_config(config: PipelineConfig):
@@ -46,7 +47,8 @@ class TableParser:
 
     def parse(self, pdf_path: str, page_num: int, element: dict) -> List[str]:
         crop = self.ingestor.render_high_res_crop(pdf_path, page_num, element["bbox"])
-        raw_output = self._run_qwen(crop, self.SYSTEM_PROMPT, self.config.max_new_tokens_table)
+        max_tokens = estimate_max_tokens(crop, self.config.max_new_tokens_table)
+        raw_output = self._run_qwen(crop, self.SYSTEM_PROMPT, max_tokens)
         return self._split_tables(self._strip_fences(raw_output))
 
     def _run_qwen(self, crop: Image.Image, prompt: str, max_new_tokens: int) -> str:
@@ -56,8 +58,7 @@ class TableParser:
         ]}]
         text_prompt = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         image_inputs, _ = process_vision_info(messages)
-        inputs = self.processor(text=[text_prompt], images=image_inputs, padding=True, return_tensors="pt"
-        ).to(self.model.device)
+        inputs = self.processor(text=[text_prompt], images=image_inputs, padding=True, return_tensors="pt").to(self.model.device)
         with torch.no_grad():
             generated_ids = self.model.generate(
                 **inputs, max_new_tokens=max_new_tokens,
