@@ -117,11 +117,19 @@ def main():
             crop.save(crop_path)
             print(f"  [crop] Saved: {crop_path} (size={crop.size})")
 
-            raw_output = table_parser._run_qwen(
-                crop, table_parser.SYSTEM_PROMPT, config.max_new_tokens_table
-            )
-            print(f"  [qwen-raw] {len(raw_output)} chars returned:")
-            print(f"  {raw_output[:2000]!r}")
+            # raw_output = table_parser._run_qwen(
+            #     crop, table_parser.SYSTEM_PROMPT, config.max_new_tokens_table
+            # )
+            results = table_parser.parse(args.pdf_path, page_num, table_el)
+            raw_output = "\n".join(results)  # rejoin for display purposes
+            print(f"  [parse] returned {len(results)} table block(s)")
+            for j, block in enumerate(results):
+                print(f"  [table {j}] {len(block)} chars: {block[:500]!r}")
+
+            if not results or not any(r.strip() for r in results):
+                print(f"  [RESULT] parse() returned empty — model/prompt/image issue.")
+            else:
+                print(f"  [RESULT] Extraction succeeded for this table.")
 
             stripped = table_parser._strip_fences(raw_output)
             split = table_parser._split_tables(stripped)
