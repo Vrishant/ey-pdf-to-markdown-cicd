@@ -148,7 +148,7 @@ class TableParser:
         safe_pixels = self.config.qwen_max_pixels
         bbox = element["bbox"]
         table_height_pt = bbox[3] - bbox[1]
-        if crop_pixels <= safe_pixels or table_height_pt <= self.config.table_split_band_pt:
+        if crop_pixels <= safe_pixels and table_height_pt <= self.config.table_split_band_pt:
             max_tokens = estimate_max_tokens(crop, self.config.max_new_tokens_table)
             raw_output = self._run_qwen(crop, self.SYSTEM_PROMPT, max_tokens)
             return self._split_tables(self._strip_fences(raw_output))
@@ -171,8 +171,17 @@ class TableParser:
 
     def _compute_bands(self, bbox: list) -> List[list]:
         x1, y1, x2, y2 = bbox
-        band_h = self.config.table_split_band_pt
+        
+        w_pt = x2 - x1
+        scale = self.config.extraction_dpi / 72.0
+        w_px = w_pt * scale
+        
+        # Calculate max band height that keeps pixels within safe limits
+        max_band_h = self.config.qwen_max_pixels / (w_px * scale)
+        
         overlap = self.config.table_split_overlap_pt
+        band_h = min(self.config.table_split_band_pt, max_band_h)
+        band_h = max(band_h, overlap + 10)  # Ensure progress is made
 
         bands = []
         top = y1
