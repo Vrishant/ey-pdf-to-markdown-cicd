@@ -143,40 +143,10 @@ class TableParser:
         )
         self.processor = AutoProcessor.from_pretrained(config.qwen_dir)
 
-    def parse(self, pdf_path: str, page_num: int, element: dict, allow_sub_detection: bool = True) -> List[str]:
+    def parse(self, pdf_path: str, page_num: int, element: dict) -> List[str]:
         crop = self.ingestor.render_high_res_crop(pdf_path, page_num, element["bbox"])
         crop_pixels = crop.width * crop.height
         
-        if allow_sub_detection and self.layout_extractor:
-            sub_elements = self.layout_extractor.segment_page(crop)
-            sub_tables = [el for el in sub_elements if el["type"] == "table"]
-            
-            valid_sub_tables = []
-            for t in sub_tables:
-                w = t["bbox"][2] - t["bbox"][0]
-                h = t["bbox"][3] - t["bbox"][1]
-                if (w * h) / crop_pixels < 0.90:  # Ignore bboxes covering almost the entire crop
-                    valid_sub_tables.append(t)
-                    
-            if len(valid_sub_tables) > 1:
-                results = []
-                scale = self.config.extraction_dpi / 72.0
-                basex, basey = element["bbox"][0], element["bbox"][1]
-                
-                valid_sub_tables = sorted(valid_sub_tables, key=lambda x: x["bbox"][1])
-                
-                for sub_el in valid_sub_tables:
-                    sx1, sy1, sx2, sy2 = sub_el["bbox"]
-                    new_bbox = [
-                        basex + sx1 / scale,
-                        basey + sy1 / scale,
-                        basex + sx2 / scale,
-                        basey + sy2 / scale
-                    ]
-                    new_element = {"type": "table", "bbox": new_bbox}
-                    results.extend(self.parse(pdf_path, page_num, new_element, allow_sub_detection=False))
-                return results
-
         safe_pixels = self.config.qwen_max_pixels
         bbox = element["bbox"]
         table_height_pt = bbox[3] - bbox[1]

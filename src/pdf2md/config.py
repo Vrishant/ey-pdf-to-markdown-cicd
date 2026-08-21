@@ -62,17 +62,13 @@ class PipelineConfig:
 
     quantization_bits: Optional[int] = 8
 
-    # --- Large-table splitting (OOM mitigation) ---
-    # If a table crop's rendered height (at extraction_dpi) exceeds this,
-    # split it into vertical bands instead of sending one giant image.
-    table_split_threshold_px: int = 1800        # kept for height check
-    qwen_max_pixels: int = 1_003_520            # 1344×746 — Qwen2-VL safe upper bound
-    qwen_min_pixels: int = 3_136                # 56×56 minimum
-    # Height of each band, in PDF points (pre-DPI-scaling coordinate space).
-    table_split_band_pt: int = 400
-    # Overlap between consecutive bands, in PDF points — gives partially-cut
-    # edge rows a full appearance in the neighboring band instead of being
-    # sliced mid-row.
+    # Large-table splitting (OOM mitigation) ---
+    # Because we now use SDPA (Flash Attention) and fp16, memory usage is drastically lower.
+    # We can process entire high-res tables in a single pass without splitting!
+    table_split_threshold_px: int = 1800
+    qwen_max_pixels: int = 8_192_000            # Increased from 1M to 8M to preserve full resolution
+    qwen_min_pixels: int = 3_136
+    table_split_band_pt: int = 1500             # Increased to 1500pt (larger than an A4 page) so normal tables are never split
     table_split_overlap_pt: int = 30
 
     ocr_fallback_enabled: bool = True
