@@ -62,13 +62,13 @@ class PipelineConfig:
 
     quantization_bits: Optional[int] = 8
 
-    # Large-table splitting (OOM mitigation) ---
-    # Because we now use SDPA (Flash Attention) and fp16, memory usage is drastically lower.
-    # We can process entire high-res tables in a single pass without splitting!
+    # Large-table splitting (OOM mitigation & multi-column tracking)
+    # We enforce splitting on extremely dense tables so the model doesn't get overwhelmed,
+    # but we will use header stitching so it never loses the columns.
     table_split_threshold_px: int = 1800
-    qwen_max_pixels: int = 8_192_000            # Increased from 1M to 8M to preserve full resolution
+    qwen_max_pixels: int = 2_000_000            # Allow reasonably large bands but force splitting for massive ones
     qwen_min_pixels: int = 3_136
-    table_split_band_pt: int = 1500             # Increased to 1500pt (larger than an A4 page) so normal tables are never split
+    table_split_band_pt: int = 400              # 400 points per band (~5.5 inches)
     table_split_overlap_pt: int = 30
 
     ocr_fallback_enabled: bool = True

@@ -158,45 +158,54 @@ class TableParser:
         return [self._parse_large_table(pdf_path, page_num, element["bbox"])]
 
     def _parse_large_table(self, pdf_path: str, page_num: int, bbox: list) -> str:
-        bands = self._compute_bands(bbox)
-        all_rows: List[str] = []
+        # Render the ENTIRE table crop at high resolution
+        crop = self.ingestor.render_high_res_crop(pdf_path, page_num, bbox)
+        
+        # 1. Extract Header Crop (Top 15%, max 450 pixels)
+        header_h_px = min(int(crop.height * 0.15), 450)
+        header_crop = crop.crop((0, 0, crop.width, header_h_px))
+        
+        # 2. Determine Band Height (pixels) to stay under qwen_max_pixels
+        safe_pixels = self.config.qwen_max_pixels
+        band_max_pixels = safe_pixels - (crop.width * header_h_px)
+        band_h_px = max(int(band_max_pixels / crop.width), 100) # At least 100px
+        
+        # Also respect table_split_band_pt constraint
+        scale = self.config.extraction_dpi / 72.0
+        config_band_h_px = int(self.config.table_split_band_pt * scale)
+        band_h_px = min(band_h_px, config_band_h_px)
+        
+        overlap_px = int(self.config.table_split_overlap_pt * scale)
+        
+        # 3. Create Stitched Bands
+        bands = []
+        top = header_h_px
+        while top < crop.height - 10:
+            bottom = min(top + band_h_px, crop.height)
+            band_crop = crop.crop((0, top, crop.width, bottom))
+            
+            # Stitch Header + Band vertically
+            stitched = Image.new('RGB', (crop.width, header_h_px + band_crop.height))
+            stitched.paste(header_crop, (0, 0))
+            stitched.paste(band_crop, (0, header_h_px))
+            bands.append(stitched)
+            
+            if bottom >= crop.height:
+                break
+            top = bottom - overlap_px
+            if top >= bottom: # safeguard
+                break
 
-        for i, band_bbox in enumerate(bands):
-            crop = self.ingestor.render_high_res_crop(pdf_path, page_num, band_bbox)
+        # 4. Process each stitched band
+        all_rows: List[str] = []
+        for i, stitched_crop in enumerate(bands):
             prompt = self.BAND_PROMPT.format(i=i + 1, n=len(bands))
-            max_tokens = estimate_max_tokens(crop, self.config.max_new_tokens_table)
-            raw = self._run_qwen(crop, prompt, max_tokens)
+            max_tokens = estimate_max_tokens(stitched_crop, self.config.max_new_tokens_table)
+            raw = self._run_qwen(stitched_crop, prompt, max_tokens)
             rows = re.findall(r"<tr\b.*?</tr>", self._strip_fences(raw), flags=re.DOTALL | re.IGNORECASE)
             all_rows.extend(rows)
 
         return self._merge_rows(all_rows)
-
-    def _compute_bands(self, bbox: list) -> List[list]:
-        x1, y1, x2, y2 = bbox
-        
-        w_pt = x2 - x1
-        scale = self.config.extraction_dpi / 72.0
-        w_px = w_pt * scale
-        
-        # Calculate max band height that keeps pixels within safe limits
-        max_band_h = self.config.qwen_max_pixels / (w_px * scale)
-        
-        overlap = self.config.table_split_overlap_pt
-        band_h = min(self.config.table_split_band_pt, max_band_h)
-        band_h = max(band_h, overlap + 10)  # Ensure progress is made
-
-        bands = []
-        top = y1
-        while top < y2 - 1:  # 1pt tolerance to avoid float drift re-entering
-            bottom = min(top + band_h, y2)
-            bands.append([x1, top, x2, bottom])
-            if bottom >= y2:
-                break
-            next_top = bottom - overlap
-            if next_top <= top:  # safety: overlap >= band_h would cause infinite loop
-                break
-            top = next_top
-        return bands
 
     @staticmethod
     def _merge_rows(rows: List[str]) -> str:
@@ -214,7 +223,16 @@ class TableParser:
         header_rows = [r for r in deduped if re.search(r"<th\b", r, flags=re.IGNORECASE)]
         body_rows = [r for r in deduped if r not in header_rows]
 
-        thead = f"<thead>{''.join(header_rows)}</thead>" if header_rows else ""
+        # Globally deduplicate header rows since every stitched band will produce them
+        unique_headers = []
+        seen = set()
+        for r in header_rows:
+            normalized = re.sub(r"\s+", " ", r).strip()
+            if normalized not in seen:
+                seen.add(normalized)
+                unique_headers.append(r)
+
+        thead = f"<thead>{''.join(unique_headers)}</thead>" if unique_headers else ""
         tbody = f"<tbody>{''.join(body_rows)}</tbody>"
         return f"<table>{thead}{tbody}</table>"
 
