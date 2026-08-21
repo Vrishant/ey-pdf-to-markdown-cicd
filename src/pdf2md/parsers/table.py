@@ -132,11 +132,13 @@ class TableParser:
         self.config = config
         self.ingestor = ingestor
         quant_config = build_quant_config(config)
+        device_map = {"": "cuda"} if torch.cuda.is_available() else "auto"
         self.model = Qwen2VLForConditionalGeneration.from_pretrained(
             config.qwen_dir,
             torch_dtype=torch.float16,
             quantization_config=quant_config,
-            device_map="auto",
+            device_map=device_map,
+            attn_implementation="sdpa",
         )
         self.processor = AutoProcessor.from_pretrained(config.qwen_dir)
 

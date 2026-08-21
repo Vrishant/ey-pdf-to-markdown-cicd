@@ -28,7 +28,9 @@ class LayoutExtractor:
         self.conf_threshold = config.yolo_conf_threshold
 
     def segment_page(self, image: Image.Image) -> List[Dict[str, Any]]:
-        results = self.model(image, conf=self.conf_threshold, verbose=False)[0]
+        import torch
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        results = self.model(image, conf=self.conf_threshold, verbose=False, device=device)[0]
         elements = []
         for box in results.boxes:
             class_id = int(box.cls[0].item())
@@ -46,7 +48,9 @@ class LayoutExtractor:
 
     def segment_pages_batch(self, images: List[Image.Image]) -> List[List[Dict[str, Any]]]:
         """Batched multi-page inference (speed optimization A2)."""
-        results = self.model(images, conf=self.conf_threshold, verbose=False)
+        import torch
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        results = self.model(images, conf=self.conf_threshold, verbose=False, device=device)
         all_elements = []
         for r in results:
             elements = []
