@@ -134,7 +134,7 @@ class TableParser:
         quant_config = build_quant_config(config)
         self.model = Qwen2VLForConditionalGeneration.from_pretrained(
             config.qwen_dir,
-            torch_dtype=None if quant_config else torch.float16,
+            torch_dtype=torch.float16,
             quantization_config=quant_config,
             device_map="auto",
         )
