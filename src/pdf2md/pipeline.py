@@ -25,7 +25,7 @@ class PDF2MarkdownPipeline:
         self.caption_associator = CaptionAssociator()
         self.metadata_extractor = MetadataExtractor(self.ingestor)
 
-        table_parser = TableParser(config, self.ingestor)
+        table_parser = TableParser(config, self.ingestor, self.layout_extractor)
         text_parser = TextHeadingParser(config, self.ingestor)
         graph_parser = GraphParser(config, self.ingestor, table_parser)
 

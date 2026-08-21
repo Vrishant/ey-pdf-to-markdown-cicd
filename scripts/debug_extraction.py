@@ -79,7 +79,7 @@ def main():
         n_pages = min(n_pages, args.max_pages)
 
     print(f"[setup] Loading TableParser (Qwen2-VL) — this takes a minute ...")
-    table_parser = TableParser(config, ingestor)
+    table_parser = TableParser(config, ingestor, layout_extractor)
 
     for page_num in range(n_pages):
         print(f"\n{'=' * 70}\nPAGE {page_num}\n{'=' * 70}")
