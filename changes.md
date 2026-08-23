@@ -78,3 +78,30 @@ Suspected causes, not yet root-caused:
 - Worth checking next: run `DocumentVisualizer`-equivalent bounding-box overlay on this specific PDF to see whether `LayoutExtractor` is detecting `table` boxes at all before assuming the extraction prompt is at fault.
 
 **Status: unresolved, next debugging priority.**
+
+## Phase 17 — GPU acceleration & Flash Attention
+Qwen2-VL was running predominantly on CPU with minimal GPU utilization, making table extraction extremely slow. Fixed by:
+- Forcing `device_map={"":"cuda"}` instead of `"auto"` to place the entire model on the GPU.
+- Enabling `attn_implementation="sdpa"` (Scaled Dot-Product Attention / Flash Attention) for faster attention kernels.
+- Using `torch.float16` precision unconditionally (not just when quantization is off).
+These changes together moved all inference to GPU and eliminated the CPU bottleneck.
+
+## Phase 18 — Header-stitching table splitter (complete `TableParser` rewrite)
+The Phase 15 band-splitting approach had a critical flaw: when a large table was sliced into horizontal bands, the lower bands lost the column headers entirely, so Qwen2-VL couldn't align data to columns — producing jumbled or hallucinated output on dense multi-column financial tables.
+
+**Rewrite summary — new flow:**
+1. YOLO detects table → `render_high_res_crop` produces a single PIL image of the full table.
+2. If `crop.height <= table_split_threshold_px` (800px), process in one shot with `FULL_TABLE_PROMPT` (unchanged fast path).
+3. If the crop is taller, enter `_parse_large_table`:
+   - **Header extraction**: crop the top 15% (80–400px) of the image. Send it to Qwen once with a dedicated `HEADER_PROMPT` to get `<tr><th>…</th></tr>` rows.
+   - **Body slicing**: slice the remainder into horizontal strips of `table_split_threshold_px` height, with `table_split_overlap_pt`-scaled pixel overlap.
+   - **Header stitching**: for each strip, use `PIL.Image` to paste the header image on top of the strip, producing a stitched image where Qwen always sees the column headers.
+   - **Strip processing**: send each stitched image to Qwen with `STRIP_PROMPT` (instructs the model to extract only data rows, not re-extract the headers).
+   - **Dedup & assemble**: consecutive-duplicate rows from overlap are dropped; header HTML and body rows are wrapped into `<table><thead>…</thead><tbody>…</tbody></table>`.
+
+**Removed:** `_compute_bands` (PDF-point-space slicing), `_merge_rows` (replaced by inline dedup), `BAND_PROMPT`, `SYSTEM_PROMPT` (replaced by `FULL_TABLE_PROMPT`). Old commented-out original `TableParser` class also removed.
+
+**Config changes:**
+- `table_split_threshold_px`: 1800 → **800** — the user's real-world table crops were 1380–1677px tall, which never triggered splitting at 1800.
+- `qwen_max_pixels`: 8,192,000 → **2,000,000** — prevents the processor from upscaling images to unreasonable sizes.
+- `table_split_band_pt`: 1500 → **400** — restored to original intent.
