@@ -6,8 +6,9 @@ import time
 from pathlib import Path
 
 from .config import PipelineConfig
-from .pipeline import PDF2MarkdownPipeline
+from .model_fetch import fetch_models
 from .observability import configure_logging
+from .pipeline import PDF2MarkdownPipeline
 
 
 def main():
@@ -34,6 +35,9 @@ def main():
         model_dir=args.model_dir,
         quantization_bits=None if args.no_quantization else args.quantization_bits,
     )
+
+    logger.info(f"Ensuring model weights are present in {args.model_dir} ...")
+    fetch_models(args.model_dir)
 
     logger.info(f"Loading pipeline (quantization_bits={config.quantization_bits})...")
     t0 = time.perf_counter()
